@@ -9,7 +9,9 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.diagnostic.logger
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
+import com.intellij.openapi.vfs.VfsUtil
 import com.sun.net.httpserver.HttpServer
 import com.sun.net.httpserver.HttpExchange
 import java.net.InetSocketAddress
@@ -86,35 +88,20 @@ class HttpTriggerService : Disposable {
             if (requestMethod == HTTP_METHOD_POST) {
                 // Read request body
                 val requestBody = exchange.requestBody.bufferedReader().use { it.readText() }
-                
-                // Parse JSON and extract last-assistant-message
-                val notificationMessage = try {
-                    if (requestBody.isNotEmpty()) {
-                        val json = Json.parseToJsonElement(requestBody) as JsonObject
-                        json["last-assistant-message"]?.jsonPrimitive?.content ?: "Gemini CLI processing completed."
-                    } else {
-                        "Gemini CLI processing completed."
-                    }
-                } catch (e: Exception) {
-                    logger.warn("Failed to parse request body as JSON: ${e.message}")
-                    "Gemini CLI processing completed."
-                }
 
-                // Check for specific notification type in JSON
                 if (requestBody.isNotEmpty()) {
-                    try {
-                        val json = Json.parseToJsonElement(requestBody) as JsonObject
-                        val type = json["type"]?.jsonPrimitive?.content
-                        if (type == "agent-turn-complete") {
-                            // Process refresh in the main thread
-                            ApplicationManager.getApplication().invokeLater {
-                                processRefreshRequest(notificationMessage)
-                            }
-                        } else {
-                            logger.warn("Ignoring notification with unsupported type: $type")
+                    val json = Json.parseToJsonElement(requestBody) as JsonObject
+                    val type = json["type"]?.jsonPrimitive?.content
+
+                    if (type == "agent-turn-complete") {
+                        val notificationMessage = json["last-assistant-message"]?.jsonPrimitive?.content
+                            ?: "Gemini CLI processing completed."
+
+                        ApplicationManager.getApplication().executeOnPooledThread {
+                            processRefreshRequest(notificationMessage)
                         }
-                    } catch (e: Exception) {
-                        throw e
+                    } else {
+                        logger.warn("Ignoring notification with unsupported type: $type")
                     }
                 }
 
@@ -131,40 +118,62 @@ class HttpTriggerService : Disposable {
     }
 
     private fun processRefreshRequest(notificationMessage: String) {
-        // Refresh entire file system
-        LocalFileSystem.getInstance().refresh(false)
-
-        // Process changed files for all open projects
         val settings = service<GeminiLauncherSettings>()
         val openProjects = ProjectManager.getInstance().openProjects
         for (project in openProjects) {
-            if (!project.isDisposed) {
+            if (project.isDisposed) continue
+
+            val projectRoot = resolveProjectRoot(project)
+            if (projectRoot == null) {
+                logger.warn("Unable to resolve project root for ${project.name}; processing without refresh.")
+                enqueueProjectProcessing(project, settings, notificationMessage)
+                continue
+            }
+
+            try {
+                VfsUtil.markDirtyAndRefresh(false, true, true, projectRoot)
+            } catch (e: Exception) {
+                logger.warn("VFS refresh failed for ${project.name}: ${e.message}")
+            }
+
+            enqueueProjectProcessing(project, settings, notificationMessage)
+        }
+    }
+
+    private fun resolveProjectRoot(project: Project) =
+        project.basePath?.let { LocalFileSystem.getInstance().findFileByPath(it) }
+
+    private fun enqueueProjectProcessing(
+        project: Project,
+        settings: GeminiLauncherSettings,
+        notificationMessage: String
+    ) {
+        ApplicationManager.getApplication().executeOnPooledThread {
+            if (project.isDisposed) {
+                return@executeOnPooledThread
+            }
+
+            try {
+                val fileOpenService = project.service<FileOpenService>()
+                val notificationService = project.service<NotificationService>()
+
+                if (settings.state.enableNotification) {
+                    notificationService.notifyRefreshReceived(notificationMessage)
+                }
+
+                if (settings.state.openFileOnChange) {
+                    fileOpenService.processChangedFilesAndOpen()
+                }
+
+                fileOpenService.updateLastRefreshTime()
+            } catch (e: Exception) {
+                logger.warn("Failed to process changed files for project ${project.name}: ${e.message}")
+
                 try {
-                    val fileOpenService = project.service<FileOpenService>()
                     val notificationService = project.service<NotificationService>()
-
-                    // Send notification through IntelliJ
-                    if (settings.state.enableNotification) {
-                        notificationService.notifyRefreshReceived(notificationMessage)
-                    }
-
-                    // Process changed files and open
-                    if (settings.state.openFileOnChange) {
-                        fileOpenService.processChangedFilesAndOpen()
-                    }
-
-                    // Update last refresh time
-                    fileOpenService.updateLastRefreshTime()
-                } catch (e: Exception) {
-                    logger.warn("Failed to process changed files for project ${project.name}: ${e.message}")
-                    
-                    // Send error notification
-                    try {
-                        val notificationService = project.service<NotificationService>()
-                        notificationService.notifyRefreshError(e.message ?: "Unknown error")
-                    } catch (notifyError: Exception) {
-                        logger.error("Failed to send error notification", notifyError)
-                    }
+                    notificationService.notifyRefreshError(e.message ?: "Unknown error")
+                } catch (notifyError: Exception) {
+                    logger.error("Failed to send error notification", notifyError)
                 }
             }
         }

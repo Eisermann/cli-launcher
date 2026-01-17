@@ -1,15 +1,26 @@
 package com.github.eisermann.geminilauncher.terminal
 
+import com.github.eisermann.geminilauncher.settings.GeminiLauncherSettings
+import com.github.eisermann.geminilauncher.settings.options.WinShell
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
+import com.intellij.openapi.util.SystemInfoRt
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.terminal.ui.TerminalWidget
 import com.intellij.ui.content.Content
 import org.jetbrains.plugins.terminal.TerminalToolWindowManager
 import org.jetbrains.plugins.terminal.TerminalToolWindowFactory
+import java.awt.Component
+import java.awt.event.KeyAdapter
+import java.awt.event.KeyEvent
+import java.awt.KeyEventDispatcher
+import java.awt.KeyboardFocusManager
+import com.intellij.openapi.util.Disposer
+import javax.swing.SwingUtilities
 
 /**
  * Project-level service responsible for managing Gemini terminals.
@@ -22,9 +33,20 @@ class GeminiTerminalManager(private val project: Project) {
         private val GEMINI_TERMINAL_KEY = Key.create<Boolean>("gemini.launcher.geminiTerminal")
         private val GEMINI_TERMINAL_RUNNING_KEY = Key.create<Boolean>("gemini.launcher.geminiTerminal.running")
         private val GEMINI_TERMINAL_CALLBACK_KEY = Key.create<Boolean>("gemini.launcher.geminiTerminal.callbackRegistered")
+        private val GEMINI_TERMINAL_SHIFT_ENTER_KEY = Key.create<Boolean>("gemini.launcher.geminiTerminal.shiftEnterRegistered")
     }
 
     private val logger = logger<GeminiTerminalManager>()
+    private val scriptFactory = CommandScriptFactory(
+        project = project,
+        supportsPosixShell = {
+            if (!SystemInfoRt.isWindows) {
+                true
+            } else {
+                runCatching { service<GeminiLauncherSettings>().state.winShell == WinShell.WSL }.getOrDefault(false)
+            }
+        }
+    )
 
     private data class GeminiTerminal(val widget: TerminalWidget, val content: Content)
 
@@ -38,6 +60,7 @@ class GeminiTerminalManager(private val project: Project) {
 
         existingTerminal?.let { terminal ->
             ensureTerminationCallback(terminal.widget, terminal.content)
+            ensureShiftEnterNewline(terminal.widget, terminal.content)
             if (isGeminiRunning(terminal)) {
                 logger.info("Focusing active Gemini terminal")
                 focusGeminiTerminal(terminalManager, terminal)
@@ -58,6 +81,7 @@ class GeminiTerminalManager(private val project: Project) {
         try {
             widget = terminalManager.createShellWidget(baseDir, "Gemini", true, true)
             val content = markGeminiTerminal(terminalManager, widget)
+            ensureShiftEnterNewline(widget, content)
             if (!sendCommandToTerminal(widget, content, command)) {
                 throw IllegalStateException("Failed to execute Gemini command")
             }
@@ -213,13 +237,16 @@ class GeminiTerminalManager(private val project: Project) {
         content: Content?,
         command: String
     ): Boolean {
+        val plan = scriptFactory.buildPlan(command) ?: return false
+
         return try {
-            widget.sendCommandToExecute(command)
+            widget.sendCommandToExecute(plan.command)
             setGeminiRunning(content, true)
             true
         } catch (t: Throwable) {
             logger.warn("Failed to execute Gemini command", t)
             setGeminiRunning(content, false)
+            runCatching { plan.cleanupOnFailure() }
             false
         }
     }
@@ -246,6 +273,40 @@ class GeminiTerminalManager(private val project: Project) {
         } catch (t: Throwable) {
             logger.warn("Failed to register termination callback", t)
         }
+    }
+
+    private fun ensureShiftEnterNewline(widget: TerminalWidget, content: Content?) {
+        if (content == null) return
+        if (content.getUserData(GEMINI_TERMINAL_SHIFT_ENTER_KEY) == true) return
+
+        val component = resolveTerminalComponent(widget) ?: return
+        // Use a scoped KeyEventDispatcher tied to this terminal component.
+        // KeyListener/InputMap bindings are sometimes bypassed by the terminal's internal key handling.
+        val dispatcher = KeyEventDispatcher { event ->
+            if (event.id != KeyEvent.KEY_PRESSED) return@KeyEventDispatcher false
+            if (event.keyCode != KeyEvent.VK_ENTER || !event.isShiftDown) return@KeyEventDispatcher false
+            val focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner ?: return@KeyEventDispatcher false
+            if (!SwingUtilities.isDescendingFrom(focusOwner, component)) return@KeyEventDispatcher false
+            event.consume()
+            typeText(widget, "\u001b\r")
+            true
+        }
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(dispatcher)
+        Disposer.register(project) {
+            KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(dispatcher)
+        }
+
+        content.putUserData(GEMINI_TERMINAL_SHIFT_ENTER_KEY, true)
+    }
+
+    private fun resolveTerminalComponent(widget: TerminalWidget): Component? {
+        val direct = widget as? Component
+        if (direct != null) return direct
+
+        return runCatching {
+            val method = widget.javaClass.methods.firstOrNull { it.name == "getComponent" && it.parameterCount == 0 }
+            method?.apply { isAccessible = true }?.invoke(widget) as? Component
+        }.getOrNull()
     }
 
     private fun invokeIsCommandRunning(widget: TerminalWidget): Boolean? {

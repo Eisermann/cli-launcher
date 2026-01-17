@@ -2,13 +2,12 @@ package com.github.eisermann.geminilauncher.mcp
 
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
-import com.intellij.diff.DiffContentFactory
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.components.Service
-import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import java.io.File
@@ -16,6 +15,7 @@ import java.io.File
 @Service(Service.Level.APP)
 class DiffToolService {
     private val logger = logger<DiffToolService>()
+    private val openDiffTabs = mutableMapOf<String, GeminiMergeVirtualFile>()
 
     fun openDiff(filePath: String, newContent: String): JsonObject {
         val result = JsonObject()
@@ -48,9 +48,7 @@ class DiffToolService {
 
         ApplicationManager.getApplication().invokeLater {
             try {
-                // Use custom tool window with Accept/Reject buttons
-                val diffToolWindow = project.service<DiffReviewToolWindow>()
-                diffToolWindow.showDiff(filePath, newContent)
+                openDiffInEditorTab(project, filePath, virtualFile, newContent)
             } catch (e: Exception) {
                 logger.error("Failed to open diff", e)
             }
@@ -61,10 +59,6 @@ class DiffToolService {
     }
 
     fun closeDiff(filePath: String): JsonObject {
-        // closing diff programmatically in IntelliJ is not straightforward if it's a modal dialog.
-        // If it's a tool window tab, we can close it.
-        // For now, we return success but log that it's not fully implemented.
-        
         val result = JsonObject()
         val contentArray = JsonArray()
         val textContent = JsonObject()
@@ -83,7 +77,38 @@ class DiffToolService {
         contentArray.add(textContent)
         result.add("content", contentArray)
         result.addProperty("isError", false)
+
+        ApplicationManager.getApplication().invokeLater {
+            val diffFile = synchronized(openDiffTabs) { openDiffTabs.remove(filePath) } ?: return@invokeLater
+            val project = ProjectManager.getInstance().openProjects.find {
+                filePath.startsWith(it.basePath ?: "")
+            } ?: return@invokeLater
+            runCatching { FileEditorManager.getInstance(project).closeFile(diffFile) }
+        }
         
         return result
     }
+
+    private fun openDiffInEditorTab(
+        project: com.intellij.openapi.project.Project,
+        filePath: String,
+        targetFile: com.intellij.openapi.vfs.VirtualFile,
+        newContent: String
+    ) {
+        val diffVirtualFile = GeminiMergeVirtualFile(
+            targetFile = targetFile,
+            proposedContent = newContent,
+            filePath = filePath
+        )
+        synchronized(openDiffTabs) { openDiffTabs[filePath] = diffVirtualFile }
+        FileEditorManager.getInstance(project).openFile(diffVirtualFile, true)
+    }
+
+    private fun closeOpenDiffTab(project: com.intellij.openapi.project.Project, filePath: String) {
+        val diffFile = synchronized(openDiffTabs) { openDiffTabs.remove(filePath) } ?: return
+        ApplicationManager.getApplication().invokeLater {
+            runCatching { FileEditorManager.getInstance(project).closeFile(diffFile) }
+        }
+    }
+
 }

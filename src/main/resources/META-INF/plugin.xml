@@ -60,8 +60,12 @@
     <notificationGroup id="GeminiLauncher" displayType="BALLOON" isLogByDefault="true"/>
     <applicationConfigurable instance="com.github.eisermann.geminilauncher.settings.ui.GeminiLauncherConfigurable" id="com.github.eisermann.geminilauncher.settings" displayName="Gemini Launcher"/>
     <postStartupActivity implementation="com.github.eisermann.geminilauncher.startup.GeminiStartupActivity"/>
-    <projectService serviceImplementation="com.github.eisermann.geminilauncher.mcp.DiffReviewToolWindow"/>
   </extensions>
+
+  <projectListeners>
+    <listener class="com.github.eisermann.geminilauncher.terminal.ProjectClosingListener"
+              topic="com.intellij.openapi.project.ProjectManagerListener"/>
+  </projectListeners>
 
   <actions>
     <action id="com.github.eisermann.geminilauncher.launch"

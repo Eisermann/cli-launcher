@@ -6,14 +6,13 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vcs.changes.ChangeListManager
 import com.github.eisermann.geminilauncher.settings.GeminiLauncherSettings
 import com.intellij.openapi.vcs.changes.InvokeAfterUpdateMode
 import com.intellij.openapi.diagnostic.logger
-import com.intellij.util.concurrency.AppExecutorUtil
-import java.util.concurrent.TimeUnit
 
 /**
  * Service responsible for monitoring file changes and automatically opening them in the editor.
@@ -46,35 +45,19 @@ class FileOpenService(private val project: Project) : Disposable {
      * Processes recently changed files and opens them in the editor if configured to do so.
      * This includes both tracked (version-controlled) and untracked (new) files.
      *
-     * Uses async scheduling to avoid blocking the Event Dispatch Thread.
+     * Uses ChangeListManager update callbacks to ensure VCS state is current.
      */
     fun processChangedFilesAndOpen() {
         val changeListManager = ChangeListManager.getInstance(project)
-        val thresholdTime = calculateThresholdTime()
+        changeListManager.invokeAfterUpdate({
+            val thresholdTime = calculateThresholdTime()
+            waitForVcsUpdate()
 
-        // Schedule async check after VCS update delay
-        AppExecutorUtil.getAppScheduledExecutorService().schedule({
-            if (project.isDisposed) {
-                return@schedule
-            }
-
-            ApplicationManager.getApplication().runReadAction {
-                try {
-                    val filesToOpen = mutableSetOf<VirtualFile>()
-                    collectTrackedChangedFiles(changeListManager, thresholdTime, filesToOpen)
-                    collectUntrackedFiles(changeListManager, thresholdTime, filesToOpen)
-
-                    // Back to EDT for UI operations
-                    ApplicationManager.getApplication().invokeLater {
-                        if (!project.isDisposed) {
-                            openCollectedFiles(filesToOpen)
-                        }
-                    }
-                } catch (e: Exception) {
-                    logger.error("Error collecting changed files", e)
-                }
-            }
-        }, VCS_UPDATE_WAIT_MS, TimeUnit.MILLISECONDS)
+            val filesToOpen = mutableSetOf<VirtualFile>()
+            collectTrackedChangedFiles(changeListManager, thresholdTime, filesToOpen)
+            collectUntrackedFiles(changeListManager, thresholdTime, filesToOpen)
+            openCollectedFiles(filesToOpen)
+        }, InvokeAfterUpdateMode.SYNCHRONOUS_NOT_CANCELLABLE, null, null)
     }
     
     /**
@@ -85,6 +68,15 @@ class FileOpenService(private val project: Project) : Disposable {
     private fun calculateThresholdTime(): Long {
         return lastRefreshTime + REFRESH_BUFFER_MS
     }
+
+    private fun waitForVcsUpdate() {
+        try {
+            Thread.sleep(VCS_UPDATE_WAIT_MS)
+        } catch (e: InterruptedException) {
+            logger.warn("VCS update wait was interrupted", e)
+            Thread.currentThread().interrupt()
+        }
+    }
     
     /**
      * Collects version-controlled files that have been recently modified.
@@ -94,14 +86,16 @@ class FileOpenService(private val project: Project) : Disposable {
         thresholdTime: Long,
         filesToOpen: MutableSet<VirtualFile>
     ) {
-        val allChanges = changeListManager.allChanges
-        for (change in allChanges) {
-            val virtualFile = change.afterRevision?.file?.virtualFile
-                ?: change.beforeRevision?.file?.virtualFile
+        runReadAction {
+            val allChanges = changeListManager.allChanges
+            for (change in allChanges) {
+                val virtualFile = change.afterRevision?.file?.virtualFile
+                    ?: change.beforeRevision?.file?.virtualFile
 
-            virtualFile?.let { file ->
-                if (isRecentlyModifiedProjectFile(file, thresholdTime)) {
-                    filesToOpen.add(file)
+                virtualFile?.let { file ->
+                    if (isRecentlyModifiedProjectFile(file, thresholdTime)) {
+                        filesToOpen.add(file)
+                    }
                 }
             }
         }
@@ -115,12 +109,14 @@ class FileOpenService(private val project: Project) : Disposable {
         thresholdTime: Long,
         filesToOpen: MutableSet<VirtualFile>
     ) {
-        val untrackedFilePaths = changeListManager.unversionedFilesPaths
-        for (untrackedPath in untrackedFilePaths) {
-            val virtualFile = LocalFileSystem.getInstance().findFileByPath(untrackedPath.toString())
-            virtualFile?.let { file ->
-                if (isRecentlyModifiedProjectFile(file, thresholdTime)) {
-                    filesToOpen.add(file)
+        runReadAction {
+            val untrackedFilePaths = changeListManager.unversionedFilesPaths
+            for (untrackedPath in untrackedFilePaths) {
+                val virtualFile = LocalFileSystem.getInstance().findFileByPath(untrackedPath.toString())
+                virtualFile?.let { file ->
+                    if (isRecentlyModifiedProjectFile(file, thresholdTime)) {
+                        filesToOpen.add(file)
+                    }
                 }
             }
         }

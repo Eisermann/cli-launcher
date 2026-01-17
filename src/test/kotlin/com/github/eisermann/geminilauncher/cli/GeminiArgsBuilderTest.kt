@@ -6,6 +6,7 @@ import com.github.eisermann.geminilauncher.settings.options.Mode
 import com.github.eisermann.geminilauncher.settings.options.ModelReasoningEffort
 import com.intellij.testFramework.LightPlatformTestCase
 import com.github.eisermann.geminilauncher.settings.options.WinShell
+import org.junit.Assert.assertEquals
 
 /**
  * Test OS provider for mocking Windows/non-Windows behavior
@@ -91,9 +92,9 @@ class GeminiArgsBuilderTest : LightPlatformTestCase() {
                 """-c""",
                 "'mcp_servers.intellij.command=/Applications/IntelliJ IDEA.app/Contents/jbr/Contents/Home/bin/java'",
                 """-c""",
-                "'mcp_servers.intellij.args=[\"-","classpath\", \"/Applications/IntelliJ IDEA.app/Contents/plugins/mcpserver/lib/mcpserver-frontend.jar:/Applications/IntelliJ IDEA.app/Contents/lib/util-8.jar\", \"com.intellij.mcpserver.stdio.McpStdioRunnerKt\"]'",
+                """'mcp_servers.intellij.args=["-classpath", "/Applications/IntelliJ IDEA.app/Contents/plugins/mcpserver/lib/mcpserver-frontend.jar:/Applications/IntelliJ IDEA.app/Contents/lib/util-8.jar", "com.intellij.mcpserver.stdio.McpStdioRunnerKt"]'""",
                 """-c""",
-                "'mcp_servers.intellij.env={"IJ_MCP_SERVER_PORT"=\"64342"}'"
+                """'mcp_servers.intellij.env={"IJ_MCP_SERVER_PORT"="64342"}'"""
             ),
             result
         )
@@ -128,13 +129,13 @@ class GeminiArgsBuilderTest : LightPlatformTestCase() {
                 """-c""",
                 "model_reasoning_effort='high'",
                 """-c""",
-                "notify='[\"curl\", \"-s\", \"-X\", \"POST\", \"http://localhost:22222/refresh\", \"-d\"]'",
+                """notify='[\"curl\", \"-s\", \"-X\", \"POST\", \"http://localhost:22222/refresh\", \"-d\"]'""",
                 """-c""",
                 "mcp_servers.intellij.command='C:\\Program Files\\JetBrains\\IntelliJ IDEA Community Edition 2025.2.1\\jbr\\bin\\java'",
                 """-c""",
-                "mcp_servers.intellij.args='[\"-classpath\", \"C:\\Program Files\\JetBrains\\IntelliJ IDEA Community Edition 2025.2.1\\plugins\\mcpserver\\lib\\mcpserver-frontend.jar;C:\\Program Files\\JetBrains\\IntelliJ IDEA Community Edition 2025.2.1\\lib\\util-8.jar\", \"com.intellij.mcpserver.stdio.McpStdioRunnerKt\"]'",
+                """mcp_servers.intellij.args='[\"-classpath\", \"C:\\\\Program Files\\\\JetBrains\\\\IntelliJ IDEA Community Edition 2025.2.1\\\\plugins\\\\mcpserver\\\\lib\\\\mcpserver-frontend.jar;C:\\\\Program Files\\\\JetBrains\\\\IntelliJ IDEA Community Edition 2025.2.1\\\\lib\\\\util-8.jar\", \"com.intellij.mcpserver.stdio.McpStdioRunnerKt\"]'""",
                 """-c""",
-                "mcp_servers.intellij.env='{\"IJ_MCP_SERVER_PORT\"=\"64342\",\"SystemRoot\"=\"C:\\Windows\"}'"
+                """mcp_servers.intellij.env='{\"IJ_MCP_SERVER_PORT\"=\"64342\",\"SystemRoot\"=\"C:\Windows\"}'"""
             ),
             result
         )
@@ -174,9 +175,9 @@ class GeminiArgsBuilderTest : LightPlatformTestCase() {
                 """-c""",
                 "mcp_servers.intellij.command='C:\\Program Files\\JetBrains\\IntelliJ IDEA Community Edition 2025.2.1\\jbr\\bin\\java'",
                 """-c""",
-                "mcp_servers.intellij.args='[\"-classpath\", \"C:\\Program Files\\JetBrains\\IntelliJ IDEA Community Edition 2025.2.1\\plugins\\mcpserver\\lib\\mcpserver-frontend.jar;C:\\Program Files\\JetBrains\\IntelliJ IDEA Community Edition 2025.2.1\\lib\\util-8.jar\", \"com.intellij.mcpserver.stdio.McpStdioRunnerKt\"]'",
+                """mcp_servers.intellij.args='["-classpath", "C:\\\\Program Files\\\\JetBrains\\\\IntelliJ IDEA Community Edition 2025.2.1\\\\plugins\\\\mcpserver\\\\lib\\\\mcpserver-frontend.jar;C:\\\\Program Files\\\\JetBrains\\\\IntelliJ IDEA Community Edition 2025.2.1\\\\lib\\\\util-8.jar", "com.intellij.mcpserver.stdio.McpStdioRunnerKt"]'""",
                 """-c""",
-                "mcp_servers.intellij.env='{"IJ_MCP_SERVER_PORT"=\"64342\",\"SystemRoot\"=\"C:\\Windows\"}'"
+                """mcp_servers.intellij.env='{"IJ_MCP_SERVER_PORT"="64342","SystemRoot"="C:\Windows"}'"""
             ),
             result
         )

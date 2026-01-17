@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.github.eisermann"
-version = "1.1.0"
+version = "1.1.4"
 
 repositories {
     mavenCentral()
