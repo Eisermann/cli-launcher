@@ -275,22 +275,23 @@ class GeminiTerminalManager(private val project: Project) {
         }
     }
 
-    private fun ensureShiftEnterNewline(widget: TerminalWidget, content: Content?) {
-        if (content == null) return
-        if (content.getUserData(GEMINI_TERMINAL_SHIFT_ENTER_KEY) == true) return
+	    private fun ensureShiftEnterNewline(widget: TerminalWidget, content: Content?) {
+	        if (content == null) return
+	        if (content.getUserData(GEMINI_TERMINAL_SHIFT_ENTER_KEY) == true) return
 
         val component = resolveTerminalComponent(widget) ?: return
         // Use a scoped KeyEventDispatcher tied to this terminal component.
         // KeyListener/InputMap bindings are sometimes bypassed by the terminal's internal key handling.
-        val dispatcher = KeyEventDispatcher { event ->
-            if (event.id != KeyEvent.KEY_PRESSED) return@KeyEventDispatcher false
-            if (event.keyCode != KeyEvent.VK_ENTER || !event.isShiftDown) return@KeyEventDispatcher false
-            val focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner ?: return@KeyEventDispatcher false
-            if (!SwingUtilities.isDescendingFrom(focusOwner, component)) return@KeyEventDispatcher false
-            event.consume()
-            typeText(widget, "\u001b\r")
-            true
-        }
+	        val dispatcher = KeyEventDispatcher { event ->
+	            if (event.id != KeyEvent.KEY_PRESSED) return@KeyEventDispatcher false
+	            if (event.keyCode != KeyEvent.VK_ENTER || !event.isShiftDown) return@KeyEventDispatcher false
+	            val focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner ?: return@KeyEventDispatcher false
+	            if (!SwingUtilities.isDescendingFrom(focusOwner, component)) return@KeyEventDispatcher false
+	            // Prepend ESC and let the terminal handle the actual Enter press.
+	            // This avoids sending a second Enter via ttyConnector (which can yield a blank line).
+	            typeText(widget, "\u001b")
+	            false
+	        }
         KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(dispatcher)
         Disposer.register(project) {
             KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(dispatcher)
