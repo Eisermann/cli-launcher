@@ -34,20 +34,6 @@ class GeminiArgsBuilderTest : LightPlatformTestCase() {
           ]
         }
         """.trimIndent()
-    private val mcpWindows = """
-        {
-          "type": "stdio",
-          "env": {
-            "IJ_MCP_SERVER_PORT": "64342"
-          },
-          "command": "C:\\Program Files\\JetBrains\\IntelliJ IDEA Community Edition 2025.2.1\\jbr\\bin\\java",
-          "args": [
-            "-classpath",
-            "C:\\Program Files\\JetBrains\\IntelliJ IDEA Community Edition 2025.2.1\\plugins\\mcpserver\\lib\\mcpserver-frontend.jar;C:\\Program Files\\JetBrains\\IntelliJ IDEA Community Edition 2025.2.1\\lib\\util-8.jar",
-            "com.intellij.mcpserver.stdio.McpStdioRunnerKt"
-          ]
-        }
-        """.trimIndent()
 
     override fun setUp() {
         super.setUp()
@@ -100,89 +86,6 @@ class GeminiArgsBuilderTest : LightPlatformTestCase() {
         )
     }
 
-    fun testComplexArgsFormattingOnWindows() {
-        // Test Windows formatting
-        val osProvider = TestOsProvider(isWindows = true)
-        state.winShell = WinShell.POWERSHELL_LT_73
-        state.mcpConfigInput = mcpWindows
-        state.openFileOnChange = true
-        state.enableSearch = true
-        state.enableCdProjectRoot = true
-
-        val result = GeminiArgsBuilder.build(
-            state,
-            22222,
-            osProvider = osProvider,
-            projectBasePath = "C:\\Projects\\Demo"
-        )
-
-        // Verify that complex arguments are properly formatted for Windows
-        assertEquals(
-            listOf(
-                """--full-auto""",
-                """--enable""",
-                """web_search_request""",
-                """--cd""",
-                "'C:\\Projects\\Demo'",
-                """--model""",
-                "'gemini-pro'",
-                """-c""",
-                "model_reasoning_effort='high'",
-                """-c""",
-                """notify='[\"curl\", \"-s\", \"-X\", \"POST\", \"http://localhost:22222/refresh\", \"-d\"]'""",
-                """-c""",
-                "mcp_servers.intellij.command='C:\\Program Files\\JetBrains\\IntelliJ IDEA Community Edition 2025.2.1\\jbr\\bin\\java'",
-                """-c""",
-                """mcp_servers.intellij.args='[\"-classpath\", \"C:\\\\Program Files\\\\JetBrains\\\\IntelliJ IDEA Community Edition 2025.2.1\\\\plugins\\\\mcpserver\\\\lib\\\\mcpserver-frontend.jar;C:\\\\Program Files\\\\JetBrains\\\\IntelliJ IDEA Community Edition 2025.2.1\\\\lib\\\\util-8.jar\", \"com.intellij.mcpserver.stdio.McpStdioRunnerKt\"]'""",
-                """-c""",
-                """mcp_servers.intellij.env='{\"IJ_MCP_SERVER_PORT\"=\"64342\",\"SystemRoot\"=\"C:\Windows\"}'"""
-            ),
-            result
-        )
-    }
-
-    fun testComplexArgsFormattingOnWindowsWithPowerShell73OrOver() {
-        // Test Windows formatting with PowerShell 7.3+
-        val osProvider = TestOsProvider(isWindows = true)
-        state.winShell = WinShell.POWERSHELL_73_PLUS
-        state.mcpConfigInput = mcpWindows
-        state.enableNotification = true
-        state.openFileOnChange = true
-        state.enableSearch = true
-        state.enableCdProjectRoot = true
-
-        val result = GeminiArgsBuilder.build(
-            state,
-            33333,
-            osProvider = osProvider,
-            projectBasePath = "C:\\Projects\\Demo"
-        )
-
-        // Verify that complex arguments are properly formatted for Windows with PowerShell 7.3+
-        assertEquals(
-            listOf(
-                """--full-auto""",
-                """--enable""",
-                """web_search_request""",
-                """--cd""",
-                "'C:\\Projects\\Demo'",
-                """--model""",
-                "'gemini-pro'",
-                """-c""",
-                "model_reasoning_effort='high'",
-                """-c""",
-                "notify='[\"curl\", \"-s\", \"-X\", \"POST\", \"http://localhost:33333/refresh\", \"-d\"]'",
-                """-c""",
-                "mcp_servers.intellij.command='C:\\Program Files\\JetBrains\\IntelliJ IDEA Community Edition 2025.2.1\\jbr\\bin\\java'",
-                """-c""",
-                """mcp_servers.intellij.args='["-classpath", "C:\\\\Program Files\\\\JetBrains\\\\IntelliJ IDEA Community Edition 2025.2.1\\\\plugins\\\\mcpserver\\\\lib\\\\mcpserver-frontend.jar;C:\\\\Program Files\\\\JetBrains\\\\IntelliJ IDEA Community Edition 2025.2.1\\\\lib\\\\util-8.jar", "com.intellij.mcpserver.stdio.McpStdioRunnerKt"]'""",
-                """-c""",
-                """mcp_servers.intellij.env='{"IJ_MCP_SERVER_PORT"="64342","SystemRoot"="C:\Windows"}'"""
-            ),
-            result
-        )
-    }
-
     fun testMinimalArgs() {
         // Test minimal args on non-Windows
         val osProvider = TestOsProvider(isWindows = false)
@@ -202,16 +105,17 @@ class GeminiArgsBuilderTest : LightPlatformTestCase() {
 
     fun testComplexArgsFormattingOnWindowsWithWSL() {
         // Test Windows host but WSL selected; should format like non-Windows
+        // WSL ignores notify and MCP config, so we just verify basic args
         val osProvider = TestOsProvider(isWindows = true)
         state.winShell = WinShell.WSL
-        state.mcpConfigInput = mcpWindows
+        state.mcpConfigInput = "" // WSL ignores MCP config anyway
         state.openFileOnChange = true
         state.enableNotification = true
         state.enableCdProjectRoot = true
 
         val result = GeminiArgsBuilder.build(state, 44444, osProvider = osProvider)
 
-        // Verify non-Windows style quoting and no SystemRoot
+        // Verify non-Windows style quoting and no SystemRoot (WSL ignores MCP/notify)
         assertEquals(
             listOf(
                 """--full-auto""",

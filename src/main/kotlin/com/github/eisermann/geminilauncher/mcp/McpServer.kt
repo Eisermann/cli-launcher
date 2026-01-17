@@ -238,10 +238,10 @@ class McpServer : Disposable {
         notification.addProperty("jsonrpc", "2.0")
         notification.addProperty("method", method)
         notification.add("params", gson.toJsonTree(params))
-        
+
         val data = "event: message\ndata: ${gson.toJson(notification)}\n\n"
         val bytes = data.toByteArray(StandardCharsets.UTF_8)
-        
+
         val iterator = activeSseConnections.iterator()
         while (iterator.hasNext()) {
             val exchange = iterator.next()

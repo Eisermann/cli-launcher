@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.github.eisermann"
-version = "1.1.4"
+version = "1.1.5"
 
 repositories {
     mavenCentral()
@@ -37,7 +37,7 @@ intellijPlatform {
         }
 
         changeNotes = """
-            Add Accept/Reject buttons to diff review UI - implement Claude Code-style interactive diff workflow with MCP notifications.
+            Fix merge/diff review rendering in editor tab (native merge UI).
         """.trimIndent()
     }
     publishing {
