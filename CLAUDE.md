@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Codex Launcher is an unofficial IntelliJ IDEA plugin that integrates OpenAI Codex CLI into the IDE. The plugin provides one-click terminal launching, completion notifications, automatic file opening, and MCP server integration.
+OpenCode Launcher is an unofficial IntelliJ IDEA plugin that integrates the OpenCode CLI into the IDE. The plugin provides one-click terminal launching, completion notifications, automatic file opening, and MCP server integration.
 
 **Technology Stack:**
 - Language: Kotlin 2.2.10
 - Target: JVM 21
 - Framework: IntelliJ Platform SDK 2025.2
 - Build: Gradle with Kotlin DSL
-- Plugin ID: `com.github.eisermann.codex-launcher`
+- Plugin ID: `com.github.eisermann.opencode-launcher`
 
 ## Essential Commands
 
@@ -36,7 +36,7 @@ Codex Launcher is an unofficial IntelliJ IDEA plugin that integrates OpenAI Code
 ./gradlew test
 
 # Run specific test class
-./gradlew test --tests "com.github.eisermann.codexlauncher.cli.CodexArgsBuilderTest"
+./gradlew test --tests "com.github.eisermann.opencodelauncher.cli.OpenCodeArgsBuilderTest"
 ```
 
 ## Architecture
@@ -44,14 +44,14 @@ Codex Launcher is an unofficial IntelliJ IDEA plugin that integrates OpenAI Code
 ### Core Components
 
 **Action Layer** (`actions/`)
-- `LaunchCodexAction`: Entry point for user interaction
-- Handles dual behavior: launches Codex terminal OR inserts file paths when terminal active
+- `LaunchOpenCodeAction`: Entry point for user interaction
+- Handles dual behavior: launches OpenCode terminal OR inserts file paths when terminal active
 - Icon/text changes dynamically based on terminal state (default icon vs active icon)
 
 **Terminal Management** (`terminal/`)
-- `CodexTerminalManager`: Project-level service managing Codex terminal lifecycle
+- `OpenCodeTerminalManager`: Project-level service managing OpenCode terminal lifecycle
 - Handles terminal reuse, focus management, command execution
-- Metadata tracking via `Content` UserData keys (`CODEX_TERMINAL_KEY`, `CODEX_TERMINAL_RUNNING_KEY`)
+- Metadata tracking via `Content` UserData keys (`OPENCODE_TERMINAL_KEY`, `OPENCODE_TERMINAL_RUNNING_KEY`)
 - Reflection-based compatibility for terminal API variations
 
 **MCP Server** (`mcp/`)
@@ -59,63 +59,63 @@ Codex Launcher is an unofficial IntelliJ IDEA plugin that integrates OpenAI Code
 - Provides SSE (Server-Sent Events) for notifications
 - JSON-RPC endpoints: `initialize`, `tools/list`, `tools/call`
 - Tools: `openDiff`, `closeDiff` for IDE diff view integration
-- `DiscoveryService`: Creates MCP discovery files for Codex CLI
+- `DiscoveryService`: Creates MCP discovery files for OpenCode CLI
 - `DiffToolService`: Manages diff view lifecycle
 - `IdeContextTracker`: Tracks IDE state for context-aware operations
 
 **CLI Arguments** (`cli/`)
-- `CodexArgsBuilder`: Constructs command-line arguments from settings
+- `OpenCodeArgsBuilder`: Constructs command-line arguments from settings
 - Handles mode, model, reasoning effort, web search, project root flags
 - Notify command integration for HTTP callback
 
 **Settings** (`settings/`)
-- `CodexLauncherSettings`: Application-level persistent state
-- `CodexLauncherConfigurable`: Settings UI panel
+- `OpenCodeLauncherSettings`: Application-level persistent state
+- `OpenCodeLauncherConfigurable`: Settings UI panel
 - Options enums: `Mode`, `Model`, `ModelReasoningEffort`, `WinShell`
 
 **Notification & HTTP** (`notifications/`, `http/`)
-- `NotificationService`: IDE balloon notifications for Codex completion
-- `HttpTriggerService`: HTTP server for receiving Codex completion callbacks
-- `FileOpenService`: Handles automatic file opening based on Codex output
+- `NotificationService`: IDE balloon notifications for OpenCode completion
+- `HttpTriggerService`: HTTP server for receiving OpenCode completion callbacks
+- `FileOpenService`: Handles automatic file opening based on OpenCode output
 
 **Startup** (`startup/`)
-- `CodexStartupActivity`: Initializes HTTP service and MCP server on IDE startup
+- `OpenCodeStartupActivity`: Initializes HTTP service and MCP server on IDE startup
 
 ### Plugin Extension Points
 
 **From `plugin.xml`:**
 - `applicationConfigurable`: Settings panel registration
 - `postStartupActivity`: HTTP/MCP server initialization
-- `notificationGroup`: Balloon notification group (`CodexLauncher`)
-- Main toolbar action: `LaunchCodexAction` in multiple toolbar locations
+- `notificationGroup`: Balloon notification group (`OpenCodeLauncher`)
+- Main toolbar action: `LaunchOpenCodeAction` in multiple toolbar locations
 
 ### Service Architecture
 
 **Application-Level Services:**
-- `CodexLauncherSettings`: Settings persistence
-- `HttpTriggerService`: Codex completion callback receiver
+- `OpenCodeLauncherSettings`: Settings persistence
+- `HttpTriggerService`: OpenCode completion callback receiver
 - `McpServer`: MCP protocol server for IDE integration
 - `DiscoveryService`: MCP discovery file management
 - `DiffToolService`: Diff view management
 - `IdeContextTracker`: IDE context tracking
 
 **Project-Level Services:**
-- `CodexTerminalManager`: Terminal lifecycle per project
+- `OpenCodeTerminalManager`: Terminal lifecycle per project
 - `FileOpenService`: File opening per project
 - `NotificationService`: Notifications per project
 
 ### Terminal State Management
 
 The plugin manages terminal state through UserData keys on terminal `Content`:
-- `CODEX_TERMINAL_KEY`: Marks content as Codex terminal
-- `CODEX_TERMINAL_RUNNING_KEY`: Tracks if command is executing
-- `CODEX_TERMINAL_CALLBACK_KEY`: Tracks termination callback registration
+- `OPENCODE_TERMINAL_KEY`: Marks content as OpenCode terminal
+- `OPENCODE_TERMINAL_RUNNING_KEY`: Tracks if command is executing
+- `OPENCODE_TERMINAL_CALLBACK_KEY`: Tracks termination callback registration
 
 Terminal reuse logic:
-1. Check if Codex terminal exists
+1. Check if OpenCode terminal exists
 2. If exists and running → focus it
 3. If exists and idle → reuse for new command
-4. If not exists → create new terminal tab named "Codex"
+4. If not exists → create new terminal tab named "OpenCode"
 
 ### Windows Shell Handling
 
@@ -128,9 +128,9 @@ Environment variable injection differs by shell for MCP port configuration.
 
 ### MCP Integration
 
-The plugin implements the MCP protocol for IDE ↔ Codex CLI integration:
-- HTTP server on dynamic port (exposed via `CODEX_CLI_IDE_SERVER_PORT`)
-- Discovery file at `codex/ide/codex-ide-server-$pid-$port.json`
+The plugin implements the MCP protocol for IDE ↔ OpenCode CLI integration:
+- HTTP server on dynamic port (exposed via `OPENCODE_CLI_IDE_SERVER_PORT`)
+- Discovery file at `opencode/ide/opencode-ide-server-$pid-$port.json`
 - Authorization via bearer token in discovery file
 - SSE endpoint for server-to-client notifications
 - JSON-RPC for client-to-server tool calls
@@ -191,7 +191,7 @@ runCatching {
 ## Important Notes
 
 ### Prerequisites
-- OpenAI Codex CLI must be installed separately and available in system PATH
+- OpenAI OpenCode CLI must be installed separately and available in system PATH
 - IntelliJ IDEA 2024.2+ (sinceBuild = "242")
 
 ### Platform-Specific Behavior
@@ -199,21 +199,21 @@ runCatching {
 - macOS/Linux use standard shell (`export` syntax)
 
 ### File Path Insertion
-When Codex terminal is active, the Launch Codex action switches to "Insert File Path" mode:
+When OpenCode terminal is active, the Launch OpenCode action switches to "Insert File Path" mode:
 - Sends `relative/path/to/file.kt:startLine-endLine ` to terminal
 - Supports line range selection in editor
 - Falls back to file path only if no selection
 
 ### HTTP Callback Flow
 1. Plugin starts `HttpTriggerService` on random port
-2. Port passed to Codex CLI via `--notify` flag
-3. Codex CLI sends completion notification to HTTP endpoint
+2. Port passed to OpenCode CLI via `--notify` flag
+3. OpenCode CLI sends completion notification to HTTP endpoint
 4. Plugin shows balloon notification and opens modified files
 
 ### MCP Server Flow
 1. Plugin starts `McpServer` on random port at IDE startup
-2. Creates discovery file in `codex/ide/` with port and auth token
-3. Codex CLI connects via SSE and JSON-RPC
+2. Creates discovery file in `opencode/ide/` with port and auth token
+3. OpenCode CLI connects via SSE and JSON-RPC
 4. Plugin receives tool calls (openDiff, closeDiff)
 5. Plugin sends notifications to CLI via SSE
 
@@ -225,8 +225,8 @@ Services implementing `Disposable` must clean up resources:
 
 ## Testing Strategy
 
-Tests are in `src/test/kotlin/com/github/eisermann/codexlauncher/`:
-- `cli/CodexArgsBuilderTest.kt`: CLI argument construction logic
+Tests are in `src/test/kotlin/com/github/eisermann/opencodelauncher/`:
+- `cli/OpenCodeArgsBuilderTest.kt`: CLI argument construction logic
 - Uses JUnit 4 framework
 - Integration tests via `testFramework(Platform)` in Gradle
 

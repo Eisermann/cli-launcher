@@ -1,1 +1,1 @@
-rootProject.name = "codex-launcher"
+rootProject.name = "opencode-launcher"
