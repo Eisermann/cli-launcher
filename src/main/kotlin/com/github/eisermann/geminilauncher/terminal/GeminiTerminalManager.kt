@@ -15,7 +15,6 @@ import com.intellij.ui.content.Content
 import org.jetbrains.plugins.terminal.TerminalToolWindowManager
 import org.jetbrains.plugins.terminal.TerminalToolWindowFactory
 import java.awt.Component
-import java.awt.event.KeyAdapter
 import java.awt.event.KeyEvent
 import java.awt.KeyEventDispatcher
 import java.awt.KeyboardFocusManager
@@ -275,23 +274,53 @@ class GeminiTerminalManager(private val project: Project) {
         }
     }
 
-	    private fun ensureShiftEnterNewline(widget: TerminalWidget, content: Content?) {
-	        if (content == null) return
-	        if (content.getUserData(GEMINI_TERMINAL_SHIFT_ENTER_KEY) == true) return
+	private fun ensureShiftEnterNewline(widget: TerminalWidget, content: Content?) {
+	    if (content == null) return
+	    if (content.getUserData(GEMINI_TERMINAL_SHIFT_ENTER_KEY) == true) return
 
         val component = resolveTerminalComponent(widget) ?: return
         // Use a scoped KeyEventDispatcher tied to this terminal component.
         // KeyListener/InputMap bindings are sometimes bypassed by the terminal's internal key handling.
-	        val dispatcher = KeyEventDispatcher { event ->
-	            if (event.id != KeyEvent.KEY_PRESSED) return@KeyEventDispatcher false
-	            if (event.keyCode != KeyEvent.VK_ENTER || !event.isShiftDown) return@KeyEventDispatcher false
-	            val focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner ?: return@KeyEventDispatcher false
-	            if (!SwingUtilities.isDescendingFrom(focusOwner, component)) return@KeyEventDispatcher false
-	            // Prepend ESC and let the terminal handle the actual Enter press.
-	            // This avoids sending a second Enter via ttyConnector (which can yield a blank line).
-	            typeText(widget, "\u001b")
-	            false
-	        }
+        //
+        // For Gemini-managed terminals, we currently suppress Shift+Enter entirely.
+        // JetBrains Terminal already supports multiline input via Option/Alt+Enter, and attempts to emulate
+        // "newline without submit" for Shift+Enter can lead to double-newlines or unexpected CLI behavior.
+        var suppressTyped = false
+        val dispatcher = KeyEventDispatcher { event ->
+            val focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner ?: return@KeyEventDispatcher false
+            if (!SwingUtilities.isDescendingFrom(focusOwner, component)) {
+                if (event.id == KeyEvent.KEY_RELEASED && event.keyCode == KeyEvent.VK_ENTER) {
+                    suppressTyped = false
+                }
+                return@KeyEventDispatcher false
+            }
+
+            when (event.id) {
+                KeyEvent.KEY_PRESSED -> {
+                    if (event.keyCode != KeyEvent.VK_ENTER || !event.isShiftDown) return@KeyEventDispatcher false
+                    suppressTyped = true
+                    event.consume()
+                    true
+                }
+
+                KeyEvent.KEY_TYPED -> {
+                    if (!suppressTyped) return@KeyEventDispatcher false
+                    event.consume()
+                    true
+                }
+
+                KeyEvent.KEY_RELEASED -> {
+                    if (!suppressTyped) return@KeyEventDispatcher false
+                    if (event.keyCode != KeyEvent.VK_ENTER) return@KeyEventDispatcher false
+                    suppressTyped = false
+                    event.consume()
+                    true
+                }
+
+                else -> false
+            }
+        }
+
         KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(dispatcher)
         Disposer.register(project) {
             KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(dispatcher)

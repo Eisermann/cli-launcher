@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.github.eisermann"
-version = "1.1.5"
+version = "1.0.0"
 
 repositories {
     mavenCentral()
@@ -37,7 +37,6 @@ intellijPlatform {
         }
 
         changeNotes = """
-            Fix merge/diff review rendering in editor tab (native merge UI).
         """.trimIndent()
     }
     publishing {
