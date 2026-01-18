@@ -1,11 +1,11 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
   <!-- Unique identifier of the plugin. It should be FQN. It cannot be changed between the plugin versions. -->
-  <id>com.github.eisermann.opencode-launcher</id>
+  <id>com.github.eisermann.opencode-link</id>
 
   <!-- Public plugin name should be written in Title Case.
        Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-name -->
-  <name>OpenCode Launcher</name>
+  <name>OpenCode Link</name>
 
   <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
   <vendor url="https://eisermann.github.io/">eisermann</vendor>
@@ -15,11 +15,11 @@
   <description><![CDATA[
         <blockquote><b>Important:</b> Install the OpenCode CLI separately before using this plugin.</blockquote>
 
-        <blockquote><b>For Windows users:</b> Please select your terminal shell in the plugin settings (<em>Settings (→ Other Settings) → OpenCode Launcher</em>) to ensure proper functionality.</blockquote>
+        <blockquote><b>For Windows users:</b> Please select your terminal shell in the plugin settings (<em>Settings (→ Other Settings) → OpenCode Link</em>) to ensure proper functionality.</blockquote>
 
         <h2>Overview</h2>
         <p>
-          OpenCode Launcher is an <b>unofficial</b> IntelliJ IDEA plugin that keeps the OpenCode CLI one click away inside the IDE.
+          OpenCode Link is an <b>unofficial</b> IntelliJ IDEA plugin that keeps the OpenCode CLI one click away inside the IDE.
         </p>
 
         <h2>Features</h2>
@@ -40,7 +40,7 @@
         </ol>
 
         <h2>Configuration</h2>
-        <p>Open <em>Settings (→ Other Settings) → OpenCode Launcher</em> to pick the launch mode, model, notification behavior, and auto-open options.</p>
+        <p>Open <em>Settings (→ Other Settings) → OpenCode Link</em> to pick the launch mode, model, notification behavior, and auto-open options.</p>
 
         <h2>Requirements</h2>
         <ul>
@@ -57,20 +57,20 @@
   <!-- Extension points defined by the plugin.
        Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
   <extensions defaultExtensionNs="com.intellij">
-    <notificationGroup id="OpenCodeLauncher" displayType="BALLOON" isLogByDefault="true"/>
-    <applicationConfigurable instance="com.github.eisermann.opencodelauncher.settings.ui.OpenCodeLauncherConfigurable" id="com.github.eisermann.opencodelauncher.settings" displayName="OpenCode Launcher"/>
-    <postStartupActivity implementation="com.github.eisermann.opencodelauncher.startup.OpenCodeStartupActivity"/>
-    <fileEditorProvider implementation="com.github.eisermann.opencodelauncher.mcp.OpenCodeDiffFileEditorProvider"/>
+    <notificationGroup id="OpenCodeLink" displayType="BALLOON" isLogByDefault="true"/>
+    <applicationConfigurable instance="com.github.eisermann.opencodelink.settings.ui.OpenCodeLinkConfigurable" id="com.github.eisermann.opencodelink.settings" displayName="OpenCode Link"/>
+    <postStartupActivity implementation="com.github.eisermann.opencodelink.startup.OpenCodeStartupActivity"/>
+    <fileEditorProvider implementation="com.github.eisermann.opencodelink.mcp.OpenCodeDiffFileEditorProvider"/>
   </extensions>
 
   <projectListeners>
-    <listener class="com.github.eisermann.opencodelauncher.terminal.ProjectClosingListener"
+    <listener class="com.github.eisermann.opencodelink.terminal.ProjectClosingListener"
               topic="com.intellij.openapi.project.ProjectManagerListener"/>
   </projectListeners>
 
   <actions>
-    <action id="com.github.eisermann.opencodelauncher.launch"
-      class="com.github.eisermann.opencodelauncher.actions.LaunchOpenCodeAction"
+    <action id="com.github.eisermann.opencodelink.launch"
+      class="com.github.eisermann.opencodelink.actions.LaunchOpenCodeAction"
       text="Launch OpenCode" description="Open an OpenCode terminal" icon="icons/opencode.svg">
       <!-- Keyboard shortcut: Option+Cmd+P (macOS) or Alt+Ctrl+P (Windows/Linux) -->
       <keyboard-shortcut keymap="Mac OS X" first-keystroke="alt meta P"/>

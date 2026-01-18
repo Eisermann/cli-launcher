@@ -1,1 +1,1 @@
-rootProject.name = "opencode-launcher"
+rootProject.name = "opencode-link"
