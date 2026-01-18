@@ -13,12 +13,12 @@ If you are looking for a ready-to-install plugin, use one of the implementation 
 
 Each implementation is maintained on its own branch:
 
-- Codex Link: https://github.com/Eisermann/cli-launcher/tree/codex-link
-- Gemini Link: https://github.com/Eisermann/cli-launcher/tree/gemini-link
-- OpenCode Link: https://github.com/Eisermann/cli-launcher/tree/opencode-link
+- Codex Link: https://github.com/Eisermann/cli-link/tree/codex-link
+- Gemini Link: https://github.com/Eisermann/cli-link/tree/gemini-link
+- OpenCode Link: https://github.com/Eisermann/cli-link/tree/opencode-link
 
 Downloads (plugin ZIPs):
-- https://github.com/Eisermann/cli-launcher/releases
+- https://github.com/Eisermann/cli-link/releases
 
 ## ✨ Common Features
 
