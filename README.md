@@ -1,6 +1,6 @@
 # OpenCode Link - IntelliJ Plugin
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/eisermann/cli-launcher/releases)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/eisermann/cli-link/releases)
 [![IntelliJ IDEA](https://img.shields.io/badge/IntelliJ%20IDEA-2024.2+-orange.svg)](https://www.jetbrains.com/idea/)
 
 <img width="800" alt="The screenshot of OpenCode Link." src="https://github.com/user-attachments/assets/4ee3fbd8-e384-4672-94c6-e4e9041a8e0d" />
@@ -45,7 +45,7 @@ Open **Settings (→ Other Settings) → OpenCode Link** to pick the launch mode
 
 ### Building from Source
 ```bash
-git clone https://github.com/eisermann/cli-launcher.git
+git clone https://github.com/eisermann/cli-link.git
 git checkout opencode-link
 ./gradlew buildPlugin
 ```
