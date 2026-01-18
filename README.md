@@ -13,7 +13,7 @@ OpenCode Link is an **unofficial** IntelliJ IDEA plugin that keeps the OpenCode 
 
 > **For Windows users:** Please select your terminal shell in the plugin settings to ensure proper functionality. Go to _Settings (→ Other Settings) → OpenCode Link_.
 
-## Features
+## ✨ Features
 
 - **One-click launch** from the toolbar or Tools menu
 - **Integrated terminal** that opens a dedicated "OpenCode" tab in the project root
@@ -22,7 +22,7 @@ OpenCode Link is an **unofficial** IntelliJ IDEA plugin that keeps the OpenCode 
 - **Built-in MCP server pairing** with guided setup for IntelliJ's MCP server (2025.2+)
 - **Flexible configuration** for launch modes, models, and notifications
 
-## Installation
+## 🛠️ Installation
 
 ### Prerequisites
 - IntelliJ IDEA 2024.2 or later (or other compatible JetBrains IDEs)
@@ -31,7 +31,7 @@ OpenCode Link is an **unofficial** IntelliJ IDEA plugin that keeps the OpenCode 
 ### Installation
 TBC
 
-## Usage
+## 🚀 Usage
 
 ### Quick Start
 1. Click the **Launch OpenCode** button in the main toolbar.
@@ -41,7 +41,7 @@ TBC
 ### Configuration
 Open **Settings (→ Other Settings) → OpenCode Link** to pick the launch mode, model, notification behavior, and auto-open options.
 
-## Development
+## 🔧 Development
 
 ### Building from Source
 ```bash
@@ -50,6 +50,6 @@ git checkout opencode-link
 ./gradlew buildPlugin
 ```
 
-## License
+## 📄 License
 
 This project is licensed under the terms specified in the [LICENSE](LICENSE) file.
